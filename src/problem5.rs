@@ -122,3 +122,273 @@ impl Library {
             .collect()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_book_defaults() {
+        let b = Book::new("A".into(), "B".into(), 2000);
+        assert!(!b.is_borrowed);
+    }
+
+    #[test]
+    fn test_book_summary_contains_title() {
+        let b = Book::new("A".into(), "B".into(), 2000);
+        assert!(b.summary().contains("A"));
+    }
+
+    #[test]
+    fn test_book_summary_contains_author() {
+        let b = Book::new("A".into(), "B".into(), 2000);
+        assert!(b.summary().contains("B"));
+    }
+
+    #[test]
+    fn test_book_summary_contains_year() {
+        let b = Book::new("A".into(), "B".into(), 2000);
+        assert!(b.summary().contains("2000"));
+    }
+
+    #[test]
+    fn test_library_new_empty() {
+        let l = Library::new();
+        assert_eq!(l.books.len(), 0);
+    }
+
+    #[test]
+    fn test_add_book_increases_count() {
+        let mut l = Library::new();
+        l.add_book(Book::new("A".into(), "B".into(), 1));
+        assert_eq!(l.books.len(), 1);
+    }
+
+    #[test]
+    fn test_available_books_initial() {
+        let mut l = Library::new();
+        l.add_book(Book::new("A".into(), "B".into(), 1));
+        assert_eq!(l.available_books().len(), 1);
+    }
+
+    #[test]
+    fn test_checkout_success() {
+        let mut l = Library::new();
+        l.add_book(Book::new("A".into(), "B".into(), 1));
+        assert!(l.checkout("A").is_ok());
+    }
+
+    #[test]
+    fn test_checkout_marks_borrowed() {
+        let mut l = Library::new();
+        l.add_book(Book::new("A".into(), "B".into(), 1));
+        l.checkout("A").unwrap();
+        assert!(l.books[0].is_borrowed);
+    }
+
+    #[test]
+    fn test_checkout_twice_fails() {
+        let mut l = Library::new();
+        l.add_book(Book::new("A".into(), "B".into(), 1));
+        l.checkout("A").unwrap();
+        assert!(l.checkout("A").is_err());
+    }
+
+    #[test]
+    fn test_checkout_missing() {
+        let mut l = Library::new();
+        assert!(l.checkout("X").is_err());
+    }
+
+    #[test]
+    fn test_return_success() {
+        let mut l = Library::new();
+        l.add_book(Book::new("A".into(), "B".into(), 1));
+        l.checkout("A").unwrap();
+        assert!(l.return_book("A").is_ok());
+    }
+
+    #[test]
+    fn test_return_marks_not_borrowed() {
+        let mut l = Library::new();
+        l.add_book(Book::new("A".into(), "B".into(), 1));
+        l.checkout("A").unwrap();
+        l.return_book("A").unwrap();
+        assert!(!l.books[0].is_borrowed);
+    }
+
+    #[test]
+    fn test_return_not_borrowed_fails() {
+        let mut l = Library::new();
+        l.add_book(Book::new("A".into(), "B".into(), 1));
+        assert!(l.return_book("A").is_err());
+    }
+
+    #[test]
+    fn test_return_missing() {
+        let mut l = Library::new();
+        assert!(l.return_book("X").is_err());
+    }
+
+    #[test]
+    fn test_available_after_checkout() {
+        let mut l = Library::new();
+        l.add_book(Book::new("A".into(), "B".into(), 1));
+        l.checkout("A").unwrap();
+        assert_eq!(l.available_books().len(), 0);
+    }
+
+    #[test]
+    fn test_available_after_return() {
+        let mut l = Library::new();
+        l.add_book(Book::new("A".into(), "B".into(), 1));
+        l.checkout("A").unwrap();
+        l.return_book("A").unwrap();
+        assert_eq!(l.available_books().len(), 1);
+    }
+
+    #[test]
+    fn test_multiple_books_available() {
+        let mut l = Library::new();
+        l.add_book(Book::new("A".into(), "B".into(), 1));
+        l.add_book(Book::new("C".into(), "D".into(), 2));
+        assert_eq!(l.available_books().len(), 2);
+    }
+
+    #[test]
+    fn test_multiple_checkout() {
+        let mut l = Library::new();
+        l.add_book(Book::new("A".into(), "B".into(), 1));
+        l.add_book(Book::new("C".into(), "D".into(), 2));
+        l.checkout("A").unwrap();
+        l.checkout("C").unwrap();
+        assert_eq!(l.available_books().len(), 0);
+    }
+
+    #[test]
+    fn test_partial_available() {
+        let mut l = Library::new();
+        l.add_book(Book::new("A".into(), "B".into(), 1));
+        l.add_book(Book::new("C".into(), "D".into(), 2));
+        l.checkout("A").unwrap();
+        assert_eq!(l.available_books().len(), 1);
+    }
+
+    #[test]
+    fn test_titles_match_exact() {
+        let mut l = Library::new();
+        l.add_book(Book::new("A".into(), "B".into(), 1));
+        assert!(l.checkout("a").is_err());
+    }
+
+    #[test]
+    fn test_return_then_checkout_again() {
+        let mut l = Library::new();
+        l.add_book(Book::new("A".into(), "B".into(), 1));
+        l.checkout("A").unwrap();
+        l.return_book("A").unwrap();
+        assert!(l.checkout("A").is_ok());
+    }
+
+    #[test]
+    fn test_many_books() {
+        let mut l = Library::new();
+        for i in 0..10 {
+            l.add_book(Book::new(format!("{}", i), "B".into(), 1));
+        }
+        assert_eq!(l.available_books().len(), 10);
+    }
+
+    #[test]
+    fn test_checkout_last_book() {
+        let mut l = Library::new();
+        l.add_book(Book::new("A".into(), "B".into(), 1));
+        l.add_book(Book::new("Z".into(), "B".into(), 1));
+        assert!(l.checkout("Z").is_ok());
+    }
+
+    #[test]
+    fn test_return_last_book() {
+        let mut l = Library::new();
+        l.add_book(Book::new("A".into(), "B".into(), 1));
+        l.add_book(Book::new("Z".into(), "B".into(), 1));
+        l.checkout("Z").unwrap();
+        assert!(l.return_book("Z").is_ok());
+    }
+
+    #[test]
+    fn test_checkout_does_not_affect_others() {
+        let mut l = Library::new();
+        l.add_book(Book::new("A".into(), "B".into(), 1));
+        l.add_book(Book::new("C".into(), "D".into(), 2));
+        l.checkout("A").unwrap();
+        assert!(!l.books[1].is_borrowed);
+    }
+
+    #[test]
+    fn test_return_does_not_affect_others() {
+        let mut l = Library::new();
+        l.add_book(Book::new("A".into(), "B".into(), 1));
+        l.add_book(Book::new("C".into(), "D".into(), 2));
+        l.checkout("A").unwrap();
+        l.return_book("A").unwrap();
+        assert!(!l.books[1].is_borrowed);
+    }
+
+    #[test]
+    fn test_summary_borrowed_true() {
+        let mut b = Book::new("A".into(), "B".into(), 1);
+        b.is_borrowed = true;
+        assert!(b.summary().contains("true"));
+    }
+
+    #[test]
+    fn test_summary_borrowed_false() {
+        let b = Book::new("A".into(), "B".into(), 1);
+        assert!(b.summary().contains("false"));
+    }
+
+    #[test]
+    fn test_empty_library_available() {
+        let l = Library::new();
+        assert_eq!(l.available_books().len(), 0);
+    }
+
+    #[test]
+    fn test_checkout_after_multiple_returns() {
+        let mut l = Library::new();
+        l.add_book(Book::new("A".into(), "B".into(), 1));
+        l.checkout("A").unwrap();
+        l.return_book("A").unwrap();
+        l.return_book("A").err();
+        assert!(l.checkout("A").is_ok());
+    }
+
+    #[test]
+    fn test_return_after_failed_checkout() {
+        let mut l = Library::new();
+        l.add_book(Book::new("A".into(), "B".into(), 1));
+        l.checkout("A").unwrap();
+        l.checkout("A").err();
+        assert!(l.return_book("A").is_ok());
+    }
+
+    #[test]
+    fn test_add_multiple_then_checkout_one() {
+        let mut l = Library::new();
+        for i in 0..5 {
+            l.add_book(Book::new(format!("{}", i), "B".into(), 1));
+        }
+        l.checkout("3").unwrap();
+        assert_eq!(l.available_books().len(), 4);
+    }
+
+    #[test]
+    fn test_checkout_nonexistent_after_adds() {
+        let mut l = Library::new();
+        for i in 0..5 {
+            l.add_book(Book::new(format!("{}", i), "B".into(), 1));
+        }
+        assert!(l.checkout("10").is_err());
+    }
+}
